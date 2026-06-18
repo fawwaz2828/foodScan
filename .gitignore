@@ -21,4 +21,5 @@ Carthage/Build/
 # Secrets — never commit API keys
 *.xcconfig
 Secrets.plist
+Secrets.swift
 .env

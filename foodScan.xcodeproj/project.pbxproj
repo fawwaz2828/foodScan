@@ -41,6 +41,7 @@
 		FAC000000000000000000010 /* SpeechTranscriber.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC00000000000000000000F /* SpeechTranscriber.swift */; };
 		FADD000000000000000002 /* StatisticView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FADD000000000000000001 /* StatisticView.swift */; };
 		FAFA000000000000000000A2 /* OpenAIVisionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000A1 /* OpenAIVisionService.swift */; };
+		FAFA000000000000000000FB /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000FA /* Secrets.swift */; };
 		FAFA000000000000000000B2 /* OpenAIVisionPrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000B1 /* OpenAIVisionPrompts.swift */; };
 		FAFA000000000000000000C2 /* VisionFoodAnalysisAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000C1 /* VisionFoodAnalysisAgent.swift */; };
 		FAFA000000000000000000D2 /* FoodGateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000D1 /* FoodGateService.swift */; };
@@ -124,6 +125,7 @@
 		FAC00000000000000000000F /* SpeechTranscriber.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechTranscriber.swift; sourceTree = "<group>"; };
 		FADD000000000000000001 /* StatisticView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticView.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000A1 /* OpenAIVisionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIVisionService.swift; sourceTree = "<group>"; };
+		FAFA000000000000000000FA /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000B1 /* OpenAIVisionPrompts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIVisionPrompts.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000C1 /* VisionFoodAnalysisAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFoodAnalysisAgent.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000D1 /* FoodGateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodGateService.swift; sourceTree = "<group>"; };
@@ -272,6 +274,7 @@
 				FAFA000000000000000000D1 /* FoodGateService.swift */,
 				FAFA000000000000000000E3 /* OpenFoodFactsService.swift */,
 				FAFA000000000000000000B1 /* OpenAIVisionPrompts.swift */,
+				FAFA000000000000000000FA /* Secrets.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -479,6 +482,7 @@
 				FAFA000000000000000000F2 /* ManualLogView.swift in Sources */,
 				FAFA000000000000000000E2 /* WeightTrackingView.swift in Sources */,
 				FAFA000000000000000000A2 /* OpenAIVisionService.swift in Sources */,
+				FAFA000000000000000000FB /* Secrets.swift in Sources */,
 				FAFA000000000000000000D2 /* FoodGateService.swift in Sources */,
 				FAFA000000000000000000E4 /* OpenFoodFactsService.swift in Sources */,
 				FAFA000000000000000000E6 /* BarcodeScannerView.swift in Sources */,

@@ -39,9 +39,9 @@ actor OpenAIService {
     /// Instance bersama untuk seluruh agent & view model.
     static let shared = OpenAIService()
 
-    /// Key TIDAK disimpan di source demi keamanan. Set lewat environment
-    /// variable OPENAI_API_KEY (Xcode: Edit Scheme → Run → Environment Variables).
-    private static let fallbackKey = ""
+    /// Key diambil dari `Secrets.swift` (file lokal yang TIDAK ikut ke Git),
+    /// atau dari environment variable OPENAI_API_KEY. Tempel key di Secrets.swift.
+    private static let fallbackKey = Secrets.apiKey
 
     private let endpoint = URL(string: "https://api.openai.com/v1/chat/completions")!
     /// Model vision-capable (mendukung gambar + JSON mode).
