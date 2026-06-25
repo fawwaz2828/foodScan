@@ -102,6 +102,14 @@ enum ImageStore {
         guard let data = try? Data(contentsOf: url) else { return nil }
         return UIImage(data: data)
     }
+
+    /// Menghapus file foto dari disk (dipanggil saat record dihapus agar tidak
+    /// meninggalkan file "yatim").
+    static func delete(_ fileName: String?) {
+        guard let fileName else { return }
+        let url = docs.appendingPathComponent(fileName)
+        try? FileManager.default.removeItem(at: url)
+    }
 }
 
 /// Store in-memory untuk unit testing (tanpa menyentuh disk).

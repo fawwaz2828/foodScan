@@ -140,13 +140,13 @@ enum FoodScanError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .modelNotFound:
-            return "Model Food101.mlmodel belum ditambahkan ke project. Menggunakan mode demo."
+            return "The Food101.mlmodel hasn't been added to the project. Using demo mode."
         case .classificationFailed(let reason):
-            return "Klasifikasi gagal: \(reason)"
+            return "Classification failed: \(reason)"
         case .invalidImage:
-            return "Gambar tidak valid."
+            return "Invalid image."
         case .persistenceFailed(let reason):
-            return "Penyimpanan gagal: \(reason)"
+            return "Saving failed: \(reason)"
         }
     }
 }

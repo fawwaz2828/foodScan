@@ -44,6 +44,9 @@
 		FAFA000000000000000000FB /* Secrets.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000FA /* Secrets.swift */; };
 		FAFA000000000000000000B2 /* OpenAIVisionPrompts.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000B1 /* OpenAIVisionPrompts.swift */; };
 		FAFA000000000000000000C2 /* VisionFoodAnalysisAgent.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000C1 /* VisionFoodAnalysisAgent.swift */; };
+		FAA20000000000000000A002 /* A2AProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA20000000000000000A001 /* A2AProtocol.swift */; };
+		FAA20000000000000000A004 /* A2ANetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA20000000000000000A003 /* A2ANetwork.swift */; };
+		FAA20000000000000000A006 /* VisionA2AServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAA20000000000000000A005 /* VisionA2AServer.swift */; };
 		FAFA000000000000000000D2 /* FoodGateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000D1 /* FoodGateService.swift */; };
 		FAFA000000000000000000E4 /* OpenFoodFactsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000E3 /* OpenFoodFactsService.swift */; };
 		FAFA000000000000000000E6 /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAFA000000000000000000E5 /* BarcodeScannerView.swift */; };
@@ -128,6 +131,9 @@
 		FAFA000000000000000000FA /* Secrets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Secrets.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000B1 /* OpenAIVisionPrompts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIVisionPrompts.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000C1 /* VisionFoodAnalysisAgent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionFoodAnalysisAgent.swift; sourceTree = "<group>"; };
+		FAA20000000000000000A001 /* A2AProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = A2AProtocol.swift; sourceTree = "<group>"; };
+		FAA20000000000000000A003 /* A2ANetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = A2ANetwork.swift; sourceTree = "<group>"; };
+		FAA20000000000000000A005 /* VisionA2AServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisionA2AServer.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000D1 /* FoodGateService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodGateService.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000E3 /* OpenFoodFactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFoodFactsService.swift; sourceTree = "<group>"; };
 		FAFA000000000000000000E5 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
@@ -259,8 +265,19 @@
 				FAC000000000000000000003 /* NutritionFactAgent.swift */,
 				FAC000000000000000000005 /* EnhancedRecommendationAgent.swift */,
 				FAFA000000000000000000C1 /* VisionFoodAnalysisAgent.swift */,
+				FAA20000000000000000A010 /* A2A */,
 			);
 			path = Agents;
+			sourceTree = "<group>";
+		};
+		FAA20000000000000000A010 /* A2A */ = {
+			isa = PBXGroup;
+			children = (
+				FAA20000000000000000A001 /* A2AProtocol.swift */,
+				FAA20000000000000000A003 /* A2ANetwork.swift */,
+				FAA20000000000000000A005 /* VisionA2AServer.swift */,
+			);
+			path = A2A;
 			sourceTree = "<group>";
 		};
 		FA0000000000000000000011 /* Services */ = {
@@ -488,6 +505,9 @@
 				FAFA000000000000000000E6 /* BarcodeScannerView.swift in Sources */,
 				FAFA000000000000000000B2 /* OpenAIVisionPrompts.swift in Sources */,
 				FAFA000000000000000000C2 /* VisionFoodAnalysisAgent.swift in Sources */,
+				FAA20000000000000000A002 /* A2AProtocol.swift in Sources */,
+				FAA20000000000000000A004 /* A2ANetwork.swift in Sources */,
+				FAA20000000000000000A006 /* VisionA2AServer.swift in Sources */,
 				FA0000000000000000000028 /* ImagePicker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

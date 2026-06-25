@@ -71,7 +71,7 @@ final class FoodClassifierService: FoodClassifying {
                 }
                 guard let results = request.results as? [VNClassificationObservation],
                       let best = results.first else {
-                    continuation.resume(throwing: FoodScanError.classificationFailed("Tidak ada hasil"))
+                    continuation.resume(throwing: FoodScanError.classificationFailed("No result"))
                     return
                 }
                 let prediction = FoodPrediction(

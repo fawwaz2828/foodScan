@@ -33,6 +33,12 @@ final class AgentCoordinator {
     private let recommendationAgent: RecommendationAgent
     private let visionAgent: VisionFoodAnalysisAgent   // jalur VLM ChatGPT (opsional)
 
+    // Lapisan A2A: agent vision diekspos sebagai server A2A, dan Coordinator
+    // memanggilnya sebagai KLIEN lewat protokol JSON-RPC (bukan panggilan
+    // langsung). Inilah komunikasi Agent-to-Agent berbasis protokol.
+    private let a2aNetwork: A2ANetwork
+    private let a2aClient: A2AClient
+
     /// Observer (biasanya ViewModel) untuk progres tiap tahap.
     weak var delegate: AgentEventDelegate?
 
@@ -48,7 +54,15 @@ final class AgentCoordinator {
         self.persistenceAgent = persistenceAgent
         self.recommendationAgent = recommendationAgent
         self.visionAgent = visionAgent
+
+        // Registrasi agent ke jaringan A2A + siapkan klien.
+        let network = A2ANetwork(servers: [VisionA2AServer(agent: visionAgent)])
+        self.a2aNetwork = network
+        self.a2aClient = A2AClient(network: network)
     }
+
+    /// Direktori AgentCard yang terdaftar di jaringan A2A (untuk laporan/diagnostik).
+    var a2aDirectory: [AgentCard] { a2aNetwork.directory }
 
     /// Factory standar untuk produksi.
     /// `useMockClassifier == true` memaksa mode demo (tanpa model .mlmodel).
@@ -87,7 +101,7 @@ final class AgentCoordinator {
         } catch FoodScanError.modelNotFound {
             // Fallback elegan: model belum di-download -> pakai mock agar app
             // tetap berjalan untuk demo/laporan.
-            delegate?.agentDidFinish(stage: .recognition, detail: "Model belum ada — mode demo aktif")
+            delegate?.agentDidFinish(stage: .recognition, detail: "Model not available — demo mode active")
             let mockAgent = ImageRecognitionAgent(classifier: MockFoodClassifier())
             prediction = try await mockAgent.perform(image)
         } catch {
@@ -100,7 +114,7 @@ final class AgentCoordinator {
         // ── TAHAP 2: Calorie Estimation Agent ──────────────────────────────
         delegate?.agentDidStart(stage: .estimation)
         let estimate = try await estimationAgent.perform(prediction)
-        delegate?.agentDidFinish(stage: .estimation, detail: "\(estimate.caloriesPerServing) kkal")
+        delegate?.agentDidFinish(stage: .estimation, detail: "\(estimate.caloriesPerServing) kcal")
 
         // ── TAHAP 3: Persistence Agent ─────────────────────────────────────
         delegate?.agentDidStart(stage: .persistence)
@@ -108,7 +122,7 @@ final class AgentCoordinator {
         let record = try await persistenceAgent.perform(
             PersistenceInput(estimate: estimate, imageFileName: imageFileName)
         )
-        delegate?.agentDidFinish(stage: .persistence, detail: "Tersimpan")
+        delegate?.agentDidFinish(stage: .persistence, detail: "Saved")
 
         // ── TAHAP 4: Recommendation Agent ──────────────────────────────────
         delegate?.agentDidStart(stage: .recommendation)
@@ -133,19 +147,21 @@ final class AgentCoordinator {
         delegate?.agentDidStart(stage: .recognition)
         let analysis: VisionFoodAnalysis
         do {
-            analysis = try await visionAgent.perform(image)
+            // Panggil agent vision LEWAT PROTOKOL A2A (JSON-RPC message/send),
+            // bukan pemanggilan langsung. Foto dikirim sebagai bagian file.
+            analysis = try await requestVisionViaA2A(image)
         } catch {
             delegate?.agentDidFail(stage: .recognition, error: error)
             throw error
         }
         guard analysis.isFood else {
-            let err = FoodScanError.classificationFailed("Foto tidak terdeteksi sebagai makanan.")
+            let err = FoodScanError.classificationFailed("This photo wasn't recognized as food.")
             delegate?.agentDidFail(stage: .recognition, error: err)
             throw err
         }
         delegate?.agentDidFinish(stage: .recognition,
                                  detail: "\(analysis.name) (\(Int(analysis.confidence * 100))%)")
-        delegate?.agentDidFinish(stage: .estimation, detail: "\(analysis.calories) kkal")
+        delegate?.agentDidFinish(stage: .estimation, detail: "\(analysis.calories) kcal")
 
         // ── TAHAP 3: Persistence Agent (record sudah lengkap dengan gizi) ───
         delegate?.agentDidStart(stage: .persistence)
@@ -161,7 +177,7 @@ final class AgentCoordinator {
             nutrition: analysis.nutrition
         )
         try persistenceAgent.add(record)
-        delegate?.agentDidFinish(stage: .persistence, detail: "Tersimpan")
+        delegate?.agentDidFinish(stage: .persistence, detail: "Saved")
 
         // ── TAHAP 4: Recommendation Agent ──────────────────────────────────
         delegate?.agentDidStart(stage: .recommendation)
@@ -169,6 +185,29 @@ final class AgentCoordinator {
         delegate?.agentDidFinish(stage: .recommendation, detail: recommendation.status.rawValue)
 
         return ScanPipelineResult(record: record, recommendation: recommendation)
+    }
+
+    /// Mengirim foto ke Vision Agent MELALUI protokol A2A dan men-decode
+    /// VisionFoodAnalysis dari artifact Task yang dikembalikan.
+    private func requestVisionViaA2A(_ image: UIImage) async throws -> VisionFoodAnalysis {
+        guard let jpeg = image.jpegData(compressionQuality: 0.7) else {
+            throw FoodScanError.classificationFailed("Photo could not be encoded for analysis.")
+        }
+        // Bangun pesan A2A: instruksi (text) + foto (file).
+        let message = A2AMessage(role: .user, parts: [
+            .text("Analyze this food photo and return full nutrition with every ingredient."),
+            .file(name: "food.jpg", mimeType: "image/jpeg", bytesBase64: jpeg.base64EncodedString())
+        ])
+
+        // Kirim sebagai tugas A2A dan tunggu Task hasilnya.
+        let task = try await a2aClient.sendMessage(to: VisionA2AServer.agentName, message)
+
+        guard task.status.state == .completed,
+              let json = task.firstArtifactDataJSON,
+              let data = json.data(using: .utf8) else {
+            throw FoodScanError.classificationFailed("Vision agent returned no analysis.")
+        }
+        return try JSONDecoder().decode(VisionFoodAnalysis.self, from: data)
     }
 
     /// Dipakai Home untuk menghitung ulang rekomendasi tanpa scan baru.

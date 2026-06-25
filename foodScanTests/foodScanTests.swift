@@ -226,4 +226,70 @@ final class foodScanTests: XCTestCase {
         // Tanpa override → diturunkan dari jam (08:00 = breakfast).
         XCTAssertEqual(record.mealTime, .breakfast)
     }
+
+    // MARK: - A2A (Agent-to-Agent protocol)
+
+    /// Server A2A tiruan untuk menguji protokol tanpa menyentuh jaringan/OpenAI.
+    /// Membalas pesan text dengan artifact data berisi {"echo": <text>}.
+    private final class EchoA2AServer: A2AServer {
+        var card: AgentCard {
+            AgentCard(name: "EchoAgent", description: "Echoes text back as data.",
+                      url: "a2a://local/agents/echo", version: "1.0.0",
+                      capabilities: AgentCapabilities(streaming: false),
+                      skills: [AgentSkill(id: "echo", name: "Echo", description: "Echo text", tags: ["test"])])
+        }
+        func handle(_ request: A2ARequest) async -> A2AResponse {
+            guard request.method == "message/send" else {
+                return .failure(id: request.id, code: -32601, message: "Method not found")
+            }
+            let text = request.params.message.parts.combinedText
+            let artifact = A2AArtifact(name: "echo", parts: [.data(json: "{\"echo\":\"\(text)\"}")])
+            return A2AResponse(id: request.id, result: A2ATask(status: A2ATaskStatus(state: .completed),
+                                                               artifacts: [artifact]))
+        }
+    }
+
+    func testA2APartCodableRoundTrip() throws {
+        let parts: [A2APart] = [
+            .text("hello"),
+            .data(json: "{\"a\":1}"),
+            .file(name: "f.jpg", mimeType: "image/jpeg", bytesBase64: "QUJD")
+        ]
+        let data = try JSONEncoder().encode(parts)
+        let decoded = try JSONDecoder().decode([A2APart].self, from: data)
+        XCTAssertEqual(decoded, parts)                 // diskriminator `kind` terjaga
+        XCTAssertEqual(decoded.firstFile?.name, "f.jpg")
+        XCTAssertEqual(decoded.combinedText, "hello")
+    }
+
+    func testA2ANetworkDiscoversAgentCard() async {
+        let network = A2ANetwork(servers: [EchoA2AServer()])
+        let card = network.agentCard(named: "EchoAgent")
+        XCTAssertEqual(card?.skills.first?.id, "echo")
+        XCTAssertEqual(network.directory.count, 1)
+    }
+
+    func testA2AClientSendMessageRoundTrip() async throws {
+        let network = A2ANetwork(servers: [EchoA2AServer()])
+        let client = A2AClient(network: network)
+        let msg = A2AMessage(role: .user, parts: [.text("ping")])
+
+        let task = try await client.sendMessage(to: "EchoAgent", msg)
+
+        XCTAssertEqual(task.status.state, .completed)
+        XCTAssertEqual(task.firstArtifactDataJSON, "{\"echo\":\"ping\"}")
+    }
+
+    func testA2AClientThrowsForUnknownAgent() async {
+        let network = A2ANetwork(servers: [EchoA2AServer()])
+        let client = A2AClient(network: network)
+        do {
+            _ = try await client.sendMessage(to: "Nope", A2AMessage(role: .user, parts: [.text("x")]))
+            XCTFail("Expected A2A error for unknown agent")
+        } catch let error as A2AErrorObject {
+            XCTAssertEqual(error.code, -32004)
+        } catch {
+            XCTFail("Unexpected error type: \(error)")
+        }
+    }
 }

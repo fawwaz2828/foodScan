@@ -35,7 +35,11 @@ foodScan/
 │   ├─ RecommendationAgent.swift         # Agent 4
 │   ├─ NutritionFactAgent.swift          # Agent 5  (ChatGPT)
 │   ├─ EnhancedRecommendationAgent.swift # Agent 6  (ChatGPT, RAG 7 hari)
-│   └─ VisionFoodAnalysisAgent.swift     # Agent 7  (VLM ChatGPT) — jalur utama
+│   ├─ VisionFoodAnalysisAgent.swift     # Agent 7  (VLM ChatGPT) — jalur utama
+│   └─ A2A/                              # Protokol Agent-to-Agent (JSON-RPC)
+│       ├─ A2AProtocol.swift             #   AgentCard, Message/Part, Task, JSON-RPC
+│       ├─ A2ANetwork.swift              #   registry + transport + A2AClient
+│       └─ VisionA2AServer.swift         #   Agent 7 diekspos sebagai server A2A
 ├─ Services/                  # Tools/infrastruktur yang DIPAKAI agent
 │   ├─ OpenAIVisionService.swift   # Klien ChatGPT (vision+teks, JSON, rate-limit, retry)
 │   ├─ OpenAIVisionPrompts.swift   # System prompt tiap panggilan AI
@@ -140,6 +144,50 @@ Agent 1 (Recognition) → Agent 2 (Estimation) → Agent 3 (Persistence)
 
 ---
 
+## 3b. Protokol A2A (Agent-to-Agent)
+
+Selain kolaborasi internal lewat delegate, aplikasi mengimplementasikan **A2A
+(Agent-to-Agent) — protokol pesan formal bergaya Google Agent2Agent**. Bedanya:
+`AgentEventDelegate` hanya melaporkan progres in-process, sedangkan **A2A adalah
+kontrak komunikasi berbasis pesan** sehingga sebuah agent bisa dipanggil agent
+lain tanpa tahu implementasinya — bahkan bila kelak dipindah ke proses/host lain.
+
+**Komponen** (`foodScan/Agents/A2A/`):
+
+| Berkas | Isi |
+|--------|-----|
+| `A2AProtocol.swift` | Tipe protokol: `AgentCard` (capability discovery), `AgentSkill`, `A2AMessage`/`A2APart` (text·data·file), `A2ATask`/`A2AArtifact`/`A2ATaskStatus`, amplop JSON-RPC 2.0 `A2ARequest`/`A2AResponse`, `A2AServer` |
+| `A2ANetwork.swift` | `A2ANetwork` (registry + transport) & `A2AClient` (sisi pemanggil) |
+| `VisionA2AServer.swift` | Membungkus `VisionFoodAnalysisAgent` sebagai server A2A |
+
+**Cara kerja** — `AgentCoordinator.runWithVision` tidak lagi memanggil
+`visionAgent.perform()` langsung, melainkan bertindak sebagai **klien A2A**:
+
+```
+AgentCoordinator (A2A client)
+  │  A2AMessage(role:.user, parts:[ .text(instruksi), .file(foto jpeg base64) ])
+  ▼  JSON-RPC: { "method":"message/send", "params":{ "message": … } }
+A2ANetwork.send(to:"VisionFoodAnalysisAgent")
+  │  ⟶ encode ke byte JSON ⟶ decode ulang  (meniru batas jaringan)
+  ▼
+VisionA2AServer.handle(request)
+  │  ekstrak file part → UIImage → VisionFoodAnalysisAgent.perform()
+  ▼  A2ATask(status:.completed, artifacts:[ .data(VisionFoodAnalysis JSON) ])
+  ⟵ encode → byte JSON → decode  ⟵
+AgentCoordinator  → decode VisionFoodAnalysis dari artifact → lanjut pipeline
+```
+
+Setiap request **dan** response benar-benar di-*serialize* ke JSON lalu di-*parse*
+ulang di sisi seberang (lihat `A2ANetwork.send`), jadi kontraknya melewati
+protokol sungguhan — bukan sekadar pemanggilan fungsi. Mengganti transport
+in-process dengan HTTP **tidak mengubah** kontrak agent (Agent Card + `message/send`).
+
+Discovery: `A2AClient.discover(_:)` / `A2ANetwork.directory` memaparkan Agent Card
+tiap agent (nama, URL, versi, capabilities, skills) — persis mekanisme penemuan
+kapabilitas pada spesifikasi A2A.
+
+---
+
 ## 4. Ticket / Workflow Documentation
 
 Tiap agent dispesifikasikan sebagai user-story ticket (juga tertanam di header
@@ -155,6 +203,7 @@ file masing-masing agent).
 | A6 | EnhancedRecommendation | User ingin saran personal + simulasi "what-if" agar tahu langkah konkret | saran rujuk pola 7 hari nyata; What-If tepat 2 swap; reminder saat sisa < 500 |
 | A7 | VisionFoodAnalysis | User ingin cukup memotret lalu dapat nama/kalori/gizi/**setiap bahan** agar log akurat tanpa mengetik | 1 panggilan VLM → `VisionFoodAnalysis` lengkap; non-makanan ditolak; hanya saat ada API key |
 | C1 | Coordinator | Orkestrasi pipeline end-to-end | output A(n) jadi input A(n+1); progres dilaporkan via delegate |
+| A2A-1 | VisionA2AServer | Coordinator (klien A2A) ingin memanggil agent vision lewat protokol JSON-RPC `message/send` agar komunikasi antar-agent memakai kontrak standar (Agent Card + Message/Task), bukan panggilan langsung | foto dikirim sebagai file part; balasan `A2ATask.completed` berisi artifact `VisionFoodAnalysis`; request & response di-serialize JSON melewati `A2ANetwork`; agent tak dikenal → error JSON-RPC −32004 |
 
 ---
 

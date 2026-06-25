@@ -129,8 +129,12 @@ final class ScanViewModel: ObservableObject {
         // Mode hemat: lewati panggilan AI proaktif (portion + What-If).
         let reduceAIUsage = UserDefaults.standard.bool(forKey: UserSettings.SharedKeys.reduceAIUsage)
         if !reduceAIUsage {
-            // 2) Estimasi porsi otomatis
-            await autoEstimatePortion(for: record)
+            // 2) Estimasi porsi otomatis — HANYA pada jalur fallback Core ML.
+            //    Pada jalur VLM, kalori sudah dihitung untuk porsi yang terlihat,
+            //    jadi panggilan ini redundan → dilewati (hemat 1 panggilan AI).
+            if record.nutrition == nil {
+                await autoEstimatePortion(for: record)
+            }
 
             // 3) What-If proaktif (2 alternatif)
             do {
@@ -155,7 +159,7 @@ final class ScanViewModel: ObservableObject {
             let base = CalorieDatabase.calories(for: record.foodLabel)
             portionHint = try await ai.requestPortionHint(
                 foodName: record.displayName,
-                referenceObject: "ukuran piring dan proporsi visual makanan di foto",
+                referenceObject: "the plate size and the visual proportion of the food in the photo",
                 baseCalories: base
             )
         } catch {
@@ -173,7 +177,7 @@ final class ScanViewModel: ObservableObject {
             let base = CalorieDatabase.calories(for: prediction.rawLabel)
             let hint = try await ai.requestPortionHint(
                 foodName: prediction.displayName,
-                referenceObject: "koin Rp1.000 (diameter ~24,5 mm) di samping makanan",
+                referenceObject: "a coin (~24 mm diameter) next to the food",
                 baseCalories: base
             )
             portionHint = hint

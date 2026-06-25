@@ -19,6 +19,10 @@ final class HistoryViewModel: ObservableObject {
     private let enhancedRec: EnhancedRecommendationAgent
     private let settings: UserSettings?
 
+    /// Tanda-tangan riwayat saat `personalAdvice` terakhir dihitung. Dipakai
+    /// untuk MELEWATI panggilan AI bila riwayat tidak berubah (hemat biaya).
+    private var lastAdviceSignature: String?
+
     init(coordinator: AgentCoordinator,
          settings: UserSettings? = nil,
          enhancedRec: EnhancedRecommendationAgent = EnhancedRecommendationAgent()) {
@@ -34,9 +38,21 @@ final class HistoryViewModel: ObservableObject {
             coordinator.updateDailyTarget(target)
         }
         records = coordinator.persistence.allRecords()
-        recommendation = try? await coordinator.recomputeRecommendation()
-        // Saran personal dari Groq (diam-diam gagal bila API key belum diset).
-        personalAdvice = try? await enhancedRec.perform(records)
+        recommendation = try? await coordinator.recomputeRecommendation()   // lokal, tanpa AI
+
+        // Saran personal memakai AI. Hanya hitung ulang bila riwayat BERUBAH
+        // dan mode hemat tidak aktif — mencegah panggilan AI berulang tiap kali
+        // refresh dipicu (pindah tab, pull-to-refresh, hapus/edit entri).
+        let reduceAIUsage = UserDefaults.standard.bool(forKey: UserSettings.SharedKeys.reduceAIUsage)
+        let signature = "\(records.count)|\(records.first?.id.uuidString ?? "-")|\(totalToday)"
+        if reduceAIUsage {
+            personalAdvice = nil
+        } else if signature != lastAdviceSignature {
+            if let advice = try? await enhancedRec.perform(records) {
+                personalAdvice = advice
+                lastAdviceSignature = signature
+            }
+        }
     }
 
     /// Log makanan manual via teks (tanpa foto): Groq mengestimasi gizi, lalu
@@ -83,21 +99,35 @@ final class HistoryViewModel: ObservableObject {
     }
 
     func delete(at offsets: IndexSet) {
-        for index in offsets {
-            let record = records[index]
+        let toDelete = offsets.map { records[$0] }
+        for record in toDelete {
             try? coordinator.persistence.delete(id: record.id)
         }
+        toDelete.forEach { deleteImageIfOrphaned($0.imageFileName) }
         Task { await refresh() }
     }
 
     func delete(_ record: ScanRecord) {
         try? coordinator.persistence.delete(id: record.id)
+        deleteImageIfOrphaned(record.imageFileName)
         Task { await refresh() }
     }
 
     func clearAll() {
+        // Kumpulkan semua foto SEBELUM data dihapus, lalu bersihkan dari disk.
+        let images = Set(coordinator.persistence.allRecords().compactMap { $0.imageFileName })
         try? coordinator.persistence.clearAll()
+        images.forEach { ImageStore.delete($0) }
         Task { await refresh() }
+    }
+
+    /// Menghapus file foto HANYA bila tidak ada record lain yang masih memakainya
+    /// (mis. entri hasil "log again" yang berbagi foto yang sama).
+    private func deleteImageIfOrphaned(_ fileName: String?) {
+        guard let fileName else { return }
+        let stillUsed = coordinator.persistence.allRecords()
+            .contains { $0.imageFileName == fileName }
+        if !stillUsed { ImageStore.delete(fileName) }
     }
 
     // MARK: - Ringkasan harian (Cal AI)

@@ -54,18 +54,18 @@ enum HealthCategory {
 
     var title: String {
         switch self {
-        case .healthy:    return "Pilihan Sehat"
-        case .borderline: return "Cukup, Tapi Hati-hati"
-        case .unhealthy:  return "Kurang Sehat"
+        case .healthy:    return "Healthy Choice"
+        case .borderline: return "Okay, But Be Careful"
+        case .unhealthy:  return "Less Healthy"
         }
     }
 
     /// Saran singkat sesuai kategori (ditampilkan di kartu).
     var advice: String {
         switch self {
-        case .healthy:    return "Bagus! Pertahankan pilihan seperti ini."
-        case .borderline: return "Boleh, tapi imbangi dengan sayur & air putih."
-        case .unhealthy:  return "Sesekali tak apa — kurangi porsi atau frekuensinya."
+        case .healthy:    return "Great! Keep making choices like this."
+        case .borderline: return "Fine, but balance it with veggies & water."
+        case .unhealthy:  return "Okay once in a while — reduce the portion or frequency."
         }
     }
 }

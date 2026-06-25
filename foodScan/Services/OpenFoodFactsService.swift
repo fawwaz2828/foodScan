@@ -18,7 +18,7 @@ enum OpenFoodFactsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .http(let c): return "Open Food Facts HTTP \(c)."
-        case .decoding: return "Gagal membaca data produk."
+        case .decoding: return "Couldn't read the product data."
         }
     }
 }

@@ -191,7 +191,7 @@ struct HomeView: View {
                 Text("Today's Meals").font(.headline).foregroundStyle(Color.primaryText)
                 Spacer()
                 Button { showManualLog = true } label: {
-                    Label("Tulis", systemImage: "square.and.pencil")
+                    Label("Log", systemImage: "square.and.pencil")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Color.brand)
                 }

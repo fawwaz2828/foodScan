@@ -25,11 +25,11 @@ enum OpenAIError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingAPIKey: return "OPENAI_API_KEY belum diset. Tempel API key ChatGPT di OpenAIVisionService."
-        case .invalidImage: return "Gambar tidak bisa diproses."
+        case .missingAPIKey: return "OPENAI_API_KEY isn't set. Add your ChatGPT API key in Secrets.swift."
+        case .invalidImage: return "The image couldn't be processed."
         case .http(let code, let msg): return "OpenAI HTTP \(code): \(msg)"
-        case .decoding(let d): return "Gagal mem-parse balasan OpenAI: \(d)"
-        case .empty: return "Balasan OpenAI kosong."
+        case .decoding(let d): return "Couldn't parse the OpenAI response: \(d)"
+        case .empty: return "The OpenAI response was empty."
         }
     }
 }
@@ -55,7 +55,7 @@ actor OpenAIService {
     private let minInterval: TimeInterval = 0.5
     private var lastRequestAt = Date.distantPast
 
-    init(visionModel: String = "gpt-4o",
+    init(visionModel: String = "gpt-4o-mini",
          textModel: String = "gpt-4o-mini",
          apiKey: String? = nil,
          session: URLSession = .shared) {
@@ -86,7 +86,7 @@ actor OpenAIService {
         guard let dataURL = Self.jpegDataURL(from: image) else { throw OpenAIError.invalidImage }
 
         let parts: [ContentPart] = [
-            .text("Analisis makanan pada foto ini dengan teliti. Identifikasi SETIAP bahan/komponen yang terlihat, lalu balas HANYA JSON sesuai skema."),
+            .text("Carefully analyze the food in this photo. Identify EVERY visible ingredient/component, then reply with ONLY JSON matching the schema."),
             .imageURL(dataURL, detail: "high")
         ]
         let content = try await complete(model: visionModel,
@@ -100,10 +100,10 @@ actor OpenAIService {
     /// 1) Rincian gizi + skor kesehatan untuk satu makanan.
     func requestNutrition(foodName: String, calories: Int, portionRatio: Double) async throws -> NutritionalInfo {
         let user = """
-        Analisis gizi makanan berikut dan balas JSON.
-        - Nama makanan: \(foodName)
-        - Estimasi kalori (porsi terdeteksi): \(calories) kkal
-        - Rasio porsi: \(portionRatio)
+        Analyze the nutrition of the following food and reply with JSON.
+        - Food name: \(foodName)
+        - Estimated calories (detected portion): \(calories) kcal
+        - Portion ratio: \(portionRatio)
         """
         let content = try await completeText(system: OpenAIPrompts.nutrition, user: user, temperature: 0.3)
         return try decode(NutritionalInfo.self, from: content)
@@ -112,14 +112,14 @@ actor OpenAIService {
     /// 2) Saran personal berbasis riwayat 7 hari (+ simulasi opsional).
     func requestRecommendation(history: [ScanRecord], dailyTarget: Int) async throws -> PersonalAdvice {
         let lines = history
-            .map { "- \($0.displayName): \($0.calories) kkal (\(Self.dateFmt.string(from: $0.date)))" }
+            .map { "- \($0.displayName): \($0.calories) kcal (\(Self.dateFmt.string(from: $0.date)))" }
             .joined(separator: "\n")
         let user = """
-        Target kalori harian: \(dailyTarget) kkal.
-        Riwayat makan 7 hari terakhir:
-        \(lines.isEmpty ? "(belum ada data)" : lines)
+        Daily calorie target: \(dailyTarget) kcal.
+        Last 7 days of meals:
+        \(lines.isEmpty ? "(no data yet)" : lines)
 
-        Berikan saran personal + satu simulasi 'what if' singkat. Balas JSON.
+        Give personalized advice + one short 'what if' simulation. Reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.recommendation, user: user, temperature: 0.6)
         return try decode(PersonalAdvice.self, from: content)
@@ -128,9 +128,9 @@ actor OpenAIService {
     /// 3) Koreksi berdasarkan transkrip suara pengguna.
     func requestVoiceCorrection(transcript: String, currentFood: String, currentCalories: Int) async throws -> VoiceCorrectionResult {
         let user = """
-        Makanan saat ini: \(currentFood) (\(currentCalories) kkal).
-        Ucapan pengguna: "\(transcript)"
-        Tafsirkan koreksi pengguna dan balas JSON.
+        Current food: \(currentFood) (\(currentCalories) kcal).
+        User's spoken input: "\(transcript)"
+        Interpret the user's correction and reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.voiceCorrection, user: user, temperature: 0.2)
         return try decode(VoiceCorrectionResult.self, from: content)
@@ -139,9 +139,9 @@ actor OpenAIService {
     /// 4) Perkiraan porsi memakai objek referensi di samping makanan.
     func requestPortionHint(foodName: String, referenceObject: String, baseCalories: Int) async throws -> PortionHint {
         let user = """
-        Makanan terdeteksi: \(foodName) (kalori standar 1 porsi: \(baseCalories) kkal).
-        Objek referensi di foto: \(referenceObject).
-        Perkirakan ukuran porsi relatif terhadap 1 porsi standar. Balas JSON.
+        Detected food: \(foodName) (standard calories for 1 serving: \(baseCalories) kcal).
+        Reference object in the photo: \(referenceObject).
+        Estimate the portion size relative to 1 standard serving. Reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.portionHint, user: user, temperature: 0.2)
         return try decode(PortionHint.self, from: content)
@@ -151,10 +151,10 @@ actor OpenAIService {
     func requestWhatIf(lastScannedFood: String, todayTotal: Int, dailyGoal: Int,
                        remainingCalories: Int, last3Meals: [String]) async throws -> [WhatIfAlternative] {
         let user = """
-        Makanan terakhir: \(lastScannedFood).
-        Total kalori hari ini: \(todayTotal) / target \(dailyGoal) (sisa \(remainingCalories)).
-        3 makan terakhir: \(last3Meals.isEmpty ? "-" : last3Meals.joined(separator: ", ")).
-        Berikan tepat 2 alternatif tukar (swap) yang lebih sehat/rendah kalori. Balas JSON.
+        Last food: \(lastScannedFood).
+        Today's total calories: \(todayTotal) / target \(dailyGoal) (remaining \(remainingCalories)).
+        Last 3 meals: \(last3Meals.isEmpty ? "-" : last3Meals.joined(separator: ", ")).
+        Give exactly 2 healthier/lower-calorie swap alternatives. Reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.whatIf, user: user, temperature: 0.5)
         return try decode(WhatIfWrapper.self, from: content).alternatives
@@ -163,28 +163,28 @@ actor OpenAIService {
     /// 6) Tanya-jawab makanan yang baru dipindai.
     func requestFoodChat(foodName: String, calories: Int, portion: Double?,
                          nutrition: NutritionalInfo?, userQuestion: String) async throws -> String {
-        let portionText = portion.map { String(format: "%.1fx", $0) } ?? "tidak tersedia"
+        let portionText = portion.map { String(format: "%.1fx", $0) } ?? "not available"
         let nutritionText: String
         if let nutrition {
             nutritionText = """
             - Protein: \(Int(nutrition.proteinGram)) g
-            - Karbo: \(Int(nutrition.carbsGram)) g
-            - Lemak: \(Int(nutrition.fatGram)) g
-            - Serat: \(Int(nutrition.fiberGram)) g
-            - Skor kesehatan: \(String(format: "%.1f", nutrition.healthScore))/10
+            - Carbs: \(Int(nutrition.carbsGram)) g
+            - Fat: \(Int(nutrition.fatGram)) g
+            - Fiber: \(Int(nutrition.fiberGram)) g
+            - Health score: \(String(format: "%.1f", nutrition.healthScore))/10
             """
         } else {
-            nutritionText = "- Data gizi detail belum tersedia."
+            nutritionText = "- Detailed nutrition data isn't available."
         }
 
         let user = """
-        Konteks makanan:
-        - Nama makanan: \(foodName)
-        - Estimasi kalori: \(calories) kkal
-        - Estimasi porsi: \(portionText)
+        Food context:
+        - Food name: \(foodName)
+        - Estimated calories: \(calories) kcal
+        - Estimated portion: \(portionText)
         \(nutritionText)
 
-        Pertanyaan pengguna:
+        User's question:
         \(userQuestion)
         """
         let content = try await completeText(system: OpenAIPrompts.foodChat, user: user, temperature: 0.4)
@@ -194,8 +194,8 @@ actor OpenAIService {
     /// 7) Estimasi gizi dari teks bebas (log makanan tanpa foto).
     func requestManualEstimate(description: String) async throws -> ManualFoodEstimate {
         let user = """
-        Makanan yang diketik pengguna: "\(description)"
-        Perkirakan nama rapi, total kalori, gizi, dan setiap bahannya. Balas JSON.
+        Food typed by the user: "\(description)"
+        Estimate a clean name, total calories, nutrition, and every ingredient. Reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.manualEstimate, user: user, temperature: 0.3)
         return try decode(ManualFoodEstimate.self, from: content)
@@ -207,14 +207,14 @@ actor OpenAIService {
         if let ingredients, !ingredients.isEmpty {
             detected = ingredients.map { "- \($0.name) (~\(Int($0.estimatedGrams)) g)" }.joined(separator: "\n")
         } else {
-            detected = "(belum ada rincian bahan)"
+            detected = "(no ingredient details yet)"
         }
         let user = """
-        Makanan: \(foodName) (~\(calories) kkal per porsi terdeteksi).
-        Bahan terdeteksi dari foto:
+        Food: \(foodName) (~\(calories) kcal per detected portion).
+        Ingredients detected from the photo:
         \(detected)
 
-        Buatkan resep untuk memasak makanan ini. Balas JSON.
+        Create a recipe to cook this food. Reply with JSON.
         """
         let content = try await completeText(system: OpenAIPrompts.recipe, user: user, temperature: 0.5)
         return try decode(GeneratedRecipe.self, from: content)
